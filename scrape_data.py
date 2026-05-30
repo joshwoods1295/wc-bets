@@ -1,61 +1,55 @@
-"""Run this once to pull all league player stats into the database.
+"""Scrape player season stats from Sofascore into the database.
 
-Usage (from the project folder):
+Usage:
     ~/.venvs/wcbets/bin/python scrape_data.py
 
-This takes 10-30 minutes. It's polite to FBref (pauses between requests)
-and caches pages locally so re-runs are fast.
+Pulls per-player stats for all 5 major European leagues. First run
+fetches from the Sofascore API (~15-20 min). Re-runs use the local
+cache and complete in seconds.
 """
 import sys
 import time
 from pathlib import Path
 
-print("=" * 60)
-print("WC Bets — league data scraper")
-print("=" * 60)
-print()
-
-# Check we're running from the right venv / have the right packages.
-try:
-    import soccerdata  # noqa: F401
-except ImportError:
-    print("ERROR: soccerdata not found.")
-    print("Make sure you're running with the right Python, e.g.:")
-    print("   ~/.venvs/wcbets/bin/python scrape_data.py")
-    sys.exit(1)
-
-import os, sys
-os.chdir(Path(__file__).resolve().parent)  # always run from project root
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from wcbets.config import DB_PATH, LEAGUES, SEASON
-from wcbets.db import repository as repo
-from wcbets.scrape import league_scraper
+try:
+    from wcbets.scrape.sofascore_scraper import LEAGUES
+except ImportError:
+    print("ERROR: Wrong Python / venv.")
+    print("Run with: ~/.venvs/wcbets/bin/python scrape_data.py")
+    sys.exit(1)
 
-print(f"Database: {DB_PATH}")
-print(f"Season:   {SEASON}")
-print(f"Leagues:  {len(LEAGUES)}")
+from wcbets.config import DB_PATH
+from wcbets.db import repository as repo
+from wcbets.scrape import sofascore_scraper as ss
+
+print("=" * 60)
+print("WC Bets — Sofascore league data scraper")
+print("=" * 60)
 print()
 
 conn = repo.connect(DB_PATH)
 repo.init_db(conn)
 
+print(f"Database : {DB_PATH}")
+print(f"Leagues  : {len(LEAGUES)}")
+print(f"Cache    : ~/.cache/sofascore/")
+print()
+
 total = 0
 for i, league in enumerate(LEAGUES, 1):
-    print(f"[{i}/{len(LEAGUES)}] Scraping {league} ...", end=" ", flush=True)
+    print(f"[{i}/{len(LEAGUES)}] {league} ...", end=" ", flush=True)
     t0 = time.time()
     try:
-        n = league_scraper.scrape_league(conn, league, SEASON)
+        n = ss.scrape_league(conn, league)
         elapsed = time.time() - t0
         print(f"{n} players  ({elapsed:.0f}s)")
         total += n
     except Exception as e:
-        print(f"SKIPPED — {e!r}")
-        print("         FBref may be temporarily unavailable. Re-run later.")
+        print(f"FAILED — {e}")
 
 print()
-print(f"Done. {total} player-season rows written to database.")
+print(f"Done. {total} player-season rows written.")
 print()
-print("Next step: import WC squads.")
-print("  Edit data/templates/squads_template.csv with real squads,")
-print("  then run import_squads.py")
+print("Next: run import_squads.py to import WC squads.")

@@ -1,8 +1,7 @@
 """Central config: scope, paths, and flag thresholds."""
 from pathlib import Path
 
-# Leagues in scope (soccerdata FBref league IDs).
-# soccerdata only exposes the Big 5 for player-season stats.
+# League names (Sofascore tournament/season IDs live in sofascore_scraper.py).
 LEAGUES = [
     "ENG-Premier League",
     "ESP-La Liga",
@@ -11,10 +10,11 @@ LEAGUES = [
     "FRA-Ligue 1",
 ]
 
-# Season in soccerdata format (e.g. "2024" means 2024-25).
 SEASON = "2024"
 
-# Stats we store (all bettable markets). Keys are our canonical column names.
+# Stats we store (all bettable markets). Keys are canonical column names.
+# tackles and fouls now populated via Sofascore.
+# corners_taken: not available per-player from Sofascore; stays 0.
 STAT_COLUMNS = [
     "minutes", "shots", "shots_on_target", "goals", "assists",
     "fouls", "fouls_drawn", "yellows", "reds", "offsides",
