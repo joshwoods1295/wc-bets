@@ -1,0 +1,4 @@
+soccerdata>=1.8
+pandas>=2.0
+streamlit>=1.30
+pytest>=8.0
