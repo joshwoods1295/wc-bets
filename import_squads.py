@@ -13,7 +13,7 @@ import sys
 import unicodedata
 from pathlib import Path
 
-SQUADS_CSV = Path("data/squads/squads.csv")
+SQUADS_CSV = Path(__file__).resolve().parent / "data" / "squads" / "squads.csv"
 
 
 def normalise(name):

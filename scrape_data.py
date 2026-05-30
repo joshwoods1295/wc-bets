@@ -8,6 +8,7 @@ and caches pages locally so re-runs are fast.
 """
 import sys
 import time
+from pathlib import Path
 
 print("=" * 60)
 print("WC Bets — league data scraper")
@@ -22,6 +23,10 @@ except ImportError:
     print("Make sure you're running with the right Python, e.g.:")
     print("   ~/.venvs/wcbets/bin/python scrape_data.py")
     sys.exit(1)
+
+import os, sys
+os.chdir(Path(__file__).resolve().parent)  # always run from project root
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from wcbets.config import DB_PATH, LEAGUES, SEASON
 from wcbets.db import repository as repo
