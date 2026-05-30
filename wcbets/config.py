@@ -2,16 +2,13 @@
 from pathlib import Path
 
 # Leagues in scope (soccerdata FBref league IDs).
+# soccerdata only exposes the Big 5 for player-season stats.
 LEAGUES = [
     "ENG-Premier League",
     "ESP-La Liga",
     "ITA-Serie A",
     "GER-Bundesliga",
     "FRA-Ligue 1",
-    "NED-Eredivisie",
-    "POR-Primeira Liga",
-    "USA-Major League Soccer",
-    "KSA-Pro League",
 ]
 
 # Season in soccerdata format (e.g. "2024" means 2024-25).

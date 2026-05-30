@@ -28,13 +28,14 @@ FBREF_MAP = {
 }
 
 # Which leaf column in each stat_type table maps to which canonical stat.
+# soccerdata 1.9 supports: standard, keeper, shooting, playing_time, misc.
+# tackles (defense table) and corners_taken (passing_types) are not exposed
+# in this version and will be stored as 0.
 STAT_TABLES = {
     "standard": {"Gls": "goals", "Ast": "assists", "CrdY": "yellows",
                  "CrdR": "reds", "Min": "minutes"},
     "shooting": {"Sh": "shots", "SoT": "shots_on_target"},
     "misc": {"Fls": "fouls", "Fld": "fouls_drawn", "Off": "offsides"},
-    "defense": {"Tkl": "tackles"},
-    "passing_types": {"CK": "corners_taken"},
     "keeper": {"Saves": "saves"},
 }
 

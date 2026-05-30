@@ -1,4 +1,4 @@
-soccerdata>=1.8,<1.9  # 1.9 dropped defense/passing_types from the player-season API (need tackles + corners)
-pandas>=2.0,<3        # soccerdata 1.8 is incompatible with pandas 3.x MultiIndex handling
+soccerdata>=1.9       # 1.9 fixed FBref HTML parsing; tackles/corners_taken not available in this version
+pandas>=2.0,<3        # soccerdata is incompatible with pandas 3.x MultiIndex handling
 streamlit>=1.30
 pytest>=8.0

@@ -58,6 +58,7 @@ SEED_BACKLOG = [
     "ML projections of player stats",
     "Bookmaker-odds ingestion and +EV value detection",
     "Real-time / in-play data",
+    "Tackles and corners_taken not scraped (soccerdata 1.9 dropped defense/passing_types tables)",
 ]
 
 

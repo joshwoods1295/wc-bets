@@ -37,4 +37,4 @@ def test_seed_backlog_is_idempotent(tmp_path):
     repo.seed_backlog(conn, now="2026-05-30")  # second call adds nothing
     titles = [i["title"] for i in repo.list_backlog(conn)]
     assert "ML projections of player stats" in titles
-    assert len(titles) == 3
+    assert len(titles) == 4
