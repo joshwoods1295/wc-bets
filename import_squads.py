@@ -5,10 +5,12 @@ Run AFTER scrape_data.py (player records must exist first).
 Usage:
     ~/.venvs/wcbets/bin/python import_squads.py
 
-Reads data/squads/squads.csv (name,country) and matches each player
-to their record in the database by normalised name (accent-stripped,
-case-insensitive). Prints a summary of what matched and what didn't.
+Reads data/squads/squads.csv (name,country), matches each player to their
+DB record by normalised name, and writes to national_squads. Resolves
+ambiguous (same name across leagues) by picking the player with the most
+minutes. Re-running is safe (clears squads and reimports cleanly).
 """
+import csv
 import sys
 import unicodedata
 from pathlib import Path
@@ -19,13 +21,18 @@ SQUADS_CSV = Path(__file__).resolve().parent / "data" / "squads" / "squads.csv"
 def normalise(name):
     nfkd = unicodedata.normalize("NFKD", name or "")
     no_accents = "".join(c for c in nfkd if not unicodedata.combining(c))
-    # also strip punctuation that differs between sources (apostrophes, hyphens)
-    cleaned = no_accents.casefold().strip()
-    return cleaned
+    return no_accents.casefold().strip()
+
+
+def prefix_match(query_tokens, candidate_tokens):
+    """True if every token in query appears (in order) at the start of candidate."""
+    if len(query_tokens) > len(candidate_tokens):
+        return False
+    return all(q == c for q, c in zip(query_tokens, candidate_tokens))
 
 
 try:
-    import soccerdata  # noqa: F401  (just to verify venv)
+    import soccerdata  # noqa: F401
 except ImportError:
     print("ERROR: Wrong Python / venv.")
     print("Run with: ~/.venvs/wcbets/bin/python import_squads.py")
@@ -37,68 +44,75 @@ from wcbets.db import repository as repo
 conn = repo.connect(DB_PATH)
 repo.init_db(conn)
 
-# Check players exist
 n_players = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
 if n_players == 0:
-    print("No players in database yet.")
-    print("Run scrape_data.py first, then re-run this script.")
+    print("No players in database yet. Run scrape_data.py first.")
     sys.exit(1)
 
 print(f"Database has {n_players} players. Building name index...")
 
-# Build normalised-name → list of player_ids
+# normalised name -> list of (player_id, minutes)
 name_index = {}
 for pid, name in conn.execute("SELECT player_id, name FROM players"):
     key = normalise(name)
-    name_index.setdefault(key, []).append(pid)
+    mins = conn.execute(
+        "SELECT COALESCE(minutes,0) FROM player_stats WHERE player_id=?", (pid,)
+    ).fetchone()
+    name_index.setdefault(key, []).append((pid, mins[0] if mins else 0))
 
 print(f"Name index built ({len(name_index)} unique names).")
 print()
 
-# Read squads CSV
-import csv
+# Clear existing squad data so re-runs are idempotent
+conn.execute("DELETE FROM national_squads")
+conn.commit()
+
 rows = []
 with open(SQUADS_CSV, newline="") as f:
     for r in csv.DictReader(f):
         rows.append((r["name"].strip(), r["country"].strip()))
 
 matched = 0
+resolved_ambiguous = 0
 unmatched = []
-ambiguous = []
-already_linked = 0
 
 for name, country in rows:
     key = normalise(name)
     hits = name_index.get(key, [])
 
-    if len(hits) == 1:
-        try:
-            repo.upsert_squad_member(conn, hits[0], country)
-            matched += 1
-        except Exception:
-            already_linked += 1
-    elif len(hits) == 0:
+    # Fallback: prefix-token match (handles "Fabian Ruiz" -> "Fabian Ruiz Peña")
+    if not hits:
+        q_tokens = key.split()
+        hits = []
+        for db_key, entries in name_index.items():
+            c_tokens = db_key.split()
+            if len(q_tokens) >= 2 and prefix_match(q_tokens, c_tokens):
+                hits.extend(entries)
+
+    if not hits:
         unmatched.append((name, country))
+        continue
+
+    if len(hits) == 1:
+        repo.upsert_squad_member(conn, hits[0][0], country)
+        matched += 1
     else:
-        # Multiple players share this normalised name (e.g. two "David Silva"s)
-        ambiguous.append((name, country, hits))
+        # Ambiguous: pick the player_id with the most minutes
+        best = max(hits, key=lambda x: x[1])
+        repo.upsert_squad_member(conn, best[0], country)
+        resolved_ambiguous += 1
 
 print(f"Results for {len(rows)} squad entries:")
-print(f"  ✅  Matched and imported : {matched}")
-if already_linked:
-    print(f"  ℹ️   Already in database  : {already_linked}")
-if ambiguous:
-    print(f"  ⚠️   Ambiguous (skipped)  : {len(ambiguous)}")
-    for name, country, hits in ambiguous:
-        print(f"       '{name}' ({country}) matched {len(hits)} players:")
-        for pid in hits:
-            print(f"         {pid}")
+print(f"  ✅  Matched             : {matched}")
+if resolved_ambiguous:
+    print(f"  ✅  Resolved (max mins) : {resolved_ambiguous}")
 if unmatched:
-    print(f"  ❌  Not found in DB     : {len(unmatched)}")
+    print(f"  ⚠️   Not in DB          : {len(unmatched)}")
     print()
-    print("  The following players weren't matched. This usually means:")
-    print("  their league wasn't scraped, FBref uses a different spelling,")
-    print("  or the player_id format is slightly off.")
+    print("  These players have no Big-5 stats (non-European league,")
+    print("  goalkeeper with 0 appearances, or unknown FBref spelling).")
+    print("  They won't appear in matchup flags but that's expected —")
+    print("  we have no stats to base a flag on.")
     print()
     for name, country in unmatched:
         print(f"    {country}: {name}")
@@ -107,9 +121,6 @@ print()
 countries = conn.execute(
     "SELECT country, COUNT(*) FROM national_squads GROUP BY country ORDER BY country"
 ).fetchall()
-if countries:
-    print("Squads now in database:")
-    for country, count in countries:
-        print(f"  {country}: {count} players")
-else:
-    print("No squads in database yet.")
+print("Squads now in database:")
+for country, count in countries:
+    print(f"  {country}: {count} players")
