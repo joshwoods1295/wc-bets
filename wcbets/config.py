@@ -22,7 +22,7 @@ STAT_COLUMNS = [
 ]
 
 # Percentile at/above which a stat counts as "high" for a matchup flag.
-FLAG_PERCENTILE = 0.80
+FLAG_PERCENTILE = 0.70
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DB_PATH = DATA_DIR / "wcbets.db"

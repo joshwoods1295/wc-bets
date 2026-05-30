@@ -145,9 +145,19 @@ def scrape_league(conn, league, season):
             merged[col] = 0
     merged[STAT_COLUMNS] = merged[STAT_COLUMNS].apply(pd.to_numeric, errors="coerce").fillna(0)
 
-    # Recover position / age from the standard table.
-    pos_col = _pick_total_column(standard, "pos")
-    age_col = _pick_total_column(standard, "age")
+    # Recover position / age. FBref stores these as ('pos', '') and ('age', '')
+    # — the group is the key, the leaf is empty — so _pick_total_column (which
+    # matches on the leaf) misses them. Use a dedicated meta-column lookup.
+    def _meta_col(df, key):
+        for c in df.columns:
+            if isinstance(c, tuple) and c[0] == key:
+                return c
+            if c == key:
+                return c
+        return None
+
+    pos_col = _meta_col(standard, "pos")
+    age_col = _meta_col(standard, "age")
     meta = pd.DataFrame(index=standard.index)
     meta["position"] = standard[pos_col] if pos_col is not None else None
     meta["age"] = standard[age_col] if age_col is not None else None
@@ -167,10 +177,14 @@ def scrape_league(conn, league, season):
         top = grp.sort_values(minute_col, ascending=False).iloc[0]
         age = top.get("age")
         pos = top.get("position")
+        if pos is None or (isinstance(pos, float) and pd.isna(pos)):
+            pos_val = None
+        else:
+            pos_val = str(pos).split(",")[0].strip()  # "DF,MF" → "DF"
         player = {
             "player_id": player_id,
             "name": name,
-            "position": None if pd.isna(pos) else str(pos),
+            "position": pos_val,
             "club": top.get("team") if "team" in grp.columns else None,
             "league": league,
             "age": _to_int(age) if not pd.isna(age) else None,
