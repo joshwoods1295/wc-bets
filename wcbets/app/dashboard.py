@@ -1,4 +1,8 @@
 """Streamlit dashboard: pick two countries, see matchup flags; manage backlog."""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
 import streamlit as st
 from wcbets.config import DB_PATH, FLAG_PERCENTILE
 from wcbets.db import repository as repo
