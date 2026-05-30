@@ -33,12 +33,18 @@ Four components with clean boundaries:
 
 ### 1. Scraper (`scraper/`)
 - `league_scraper`: uses `soccerdata` (FBref backend) to pull per-player season stats
-  for the in-scope leagues. Stat groups:
-  - **defense**: tackles, tackles won
-  - **misc**: fouls committed, fouls drawn, yellow cards, red cards, aerial duels won,
-    ball recoveries
-  - **passing / pass-types**: corners taken
+  for the in-scope leagues. We store **only stats that map to real betting markets**
+  (player props and match markets), not general analytics metrics:
+  - **attacking**: shots, shots on target, goals, assists
+  - **discipline / duels**: fouls committed, fouls drawn, yellow cards, red cards,
+    offsides
+  - **defensive markets**: tackles
+  - **set pieces**: corners taken
+  - **goalkeeper**: saves
   - **playing time**: minutes played (required for per-90 normalisation)
+
+  Explicitly excluded as non-bettable: progressive carries, ball recoveries, pass
+  completion, and similar analytics-only metrics.
 - `wc_scraper`: pulls WC 2026 national squads and the fixture list
   (FBref national-team pages, with Wikipedia as a fallback source).
 - `manual_import`: CSV/paste import for squads and fixtures, used when the auto-scrape
@@ -50,11 +56,13 @@ Four components with clean boundaries:
 ### 2. Database (`db/` — SQLite)
 Core tables:
 - `players` — id, name, primary position, club, league, age
-- `player_stats` — player_id, season, minutes, fouls, fouls_drawn, tackles,
-  tackles_won, yellows, reds, aerials_won, recoveries, corners_taken; stored as
-  season totals plus computed per-90 values
+- `player_stats` — player_id, season, minutes, shots, shots_on_target, goals,
+  assists, fouls, fouls_drawn, yellows, reds, offsides, tackles, corners_taken,
+  saves; stored as season totals plus computed per-90 values
 - `national_squads` — player_id, country (links league players to their WC team)
 - `fixtures` — match_id, date, home_country, away_country, stage/group
+- `backlog` — id, title, notes, status (open/done), created_at; the dashboard
+  to-do list (seeded with parked v2 ideas, user-editable)
 
 ### 3. Matchup engine (`analysis/`)
 - Pure-Python, no network, independently unit-testable.
@@ -69,6 +77,9 @@ Core tables:
 - Select a WC fixture (or pick any two teams / players manually).
 - View each side's squad, positional matchups, and highlighted flags with the
   supporting per-90 figures and percentile ranks.
+- **Backlog / to-do panel**: a persisted list (stored in the `backlog` table) where
+  future ideas live. Seeded with the parked out-of-scope items below. User can add,
+  edit, and mark items done from the dashboard so nothing gets forgotten.
 
 ## Data flow
 
@@ -83,7 +94,10 @@ manual_import (CSV) --^ (squads / fixtures fallback)
 - **Scrapers**: thin tests against saved sample HTML / fixtures so CI never hits FBref.
 - **Manual import**: tests for CSV parsing and DB upsert.
 
-## Out of scope (this version)
+## Out of scope (this version) — seeds the dashboard backlog
+
+The following are parked, and are loaded as initial items in the dashboard `backlog`
+table so they stay visible as future work:
 
 - Machine-learning projections of player stats.
 - Bookmaker-odds ingestion and +EV value detection.
