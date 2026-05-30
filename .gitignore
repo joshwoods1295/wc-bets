@@ -4,4 +4,6 @@ __pycache__/
 data/*.db
 .soccerdata/
 .DS_Store
+downloaded_files/
+.pytest_cache/
 .pytest_cache/

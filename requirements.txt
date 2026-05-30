@@ -1,4 +1,4 @@
 soccerdata>=1.8
-pandas>=2.0
+pandas>=2.0,<3  # soccerdata 1.9 is incompatible with pandas 3.x MultiIndex handling
 streamlit>=1.30
 pytest>=8.0

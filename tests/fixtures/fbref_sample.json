@@ -1,0 +1,10 @@
+[
+  {"player": "A Back", "pos": "DF", "team": "X", "age": 25,
+   "Min": 1800, "Sh": 5, "SoT": 1, "Gls": 0, "Ast": 1,
+   "Fls": 40, "Fld": 12, "CrdY": 8, "CrdR": 0, "Off": 1,
+   "Tkl": 55, "CK": 0, "Saves": 0},
+  {"player": "B Wing", "pos": "FW", "team": "Y", "age": 23,
+   "Min": 1710, "Sh": 60, "SoT": 24, "Gls": 9, "Ast": 7,
+   "Fls": 15, "Fld": 48, "CrdY": 3, "CrdR": 0, "Off": 20,
+   "Tkl": 18, "CK": 30, "Saves": 0}
+]
