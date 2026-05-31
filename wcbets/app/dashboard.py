@@ -203,13 +203,24 @@ with tab_live:
                 attackers = [p for p in attacking_players
                              if (p.get("position") or "").startswith(("F", "M"))]
 
-                if not defenders:
+                if not defenders and not attackers:
                     st.warning(
-                        f"No defenders found for {def_name} in lineup — "
-                        "positions may be missing for these players."
+                        f"Neither team's lineup players were found in the database. "
+                        f"Both squads likely play outside the Big-5 leagues — "
+                        f"no stats available to analyse."
+                    )
+                elif not defenders:
+                    st.warning(
+                        f"No {def_name} defenders found in database "
+                        f"({len(defending_players)}/{len(lineup['home' if home_defends else 'away'])} "
+                        f"players matched). These players likely play outside the Big-5."
                     )
                 elif not attackers:
-                    st.warning(f"No attackers found for {atk_name} in lineup.")
+                    st.warning(
+                        f"No {atk_name} attackers found in database "
+                        f"({len(attacking_players)}/{len(lineup['away' if home_defends else 'home'])} "
+                        f"players matched). These players likely play outside the Big-5."
+                    )
                 else:
                     st.success(
                         f"Analysing **{len(defenders)}** {def_name} defenders "

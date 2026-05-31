@@ -55,7 +55,14 @@ def get_todays_matches() -> list[dict]:
             "status_type": e.get("status", {}).get("type", "notstarted"),
         })
     matches.sort(key=lambda x: x["timestamp"])
-    return matches
+    # Only return upcoming or live matches — never completed
+    active = {"notstarted", "inprogress", "1sthalf", "halftime",
+              "2ndhalf", "overtime", "penalties", "pause", "extra"}
+    return [m for m in matches
+            if m["status_type"].lower() in active
+            or m["status"].lower() in ("not started", "live", "in progress",
+                                       "1st half", "2nd half", "half time",
+                                       "extra time", "penalties")]
 
 
 def get_lineup(event_id: int) -> dict:
