@@ -1,13 +1,14 @@
 """Central config: scope, paths, and flag thresholds."""
 from pathlib import Path
 
-# League names (Sofascore tournament/season IDs live in sofascore_scraper.py).
+# League names — keep in sync with LEAGUES dict in sofascore_scraper.py.
 LEAGUES = [
-    "ENG-Premier League",
-    "ESP-La Liga",
-    "ITA-Serie A",
-    "GER-Bundesliga",
-    "FRA-Ligue 1",
+    "ENG-Premier League", "ESP-La Liga", "ITA-Serie A",
+    "GER-Bundesliga",     "FRA-Ligue 1",
+    "POR-Primeira Liga",  "NED-Eredivisie",  "TUR-Super Lig",
+    "SCO-Premiership",    "ENG-Championship","KSA-Pro League",
+    "USA-MLS",            "BRA-Serie A",     "ARG-Primera",
+    "AUT-Bundesliga",
 ]
 
 SEASON = "2024"

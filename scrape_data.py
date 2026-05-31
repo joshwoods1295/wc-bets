@@ -33,8 +33,9 @@ conn = repo.connect(DB_PATH)
 repo.init_db(conn)
 
 print(f"Database : {DB_PATH}")
-print(f"Leagues  : {len(LEAGUES)}")
-print(f"Cache    : ~/.cache/sofascore/")
+print(f"Leagues  : {len(LEAGUES)} (Big 5 + Primeira Liga, Eredivisie, Super Lig,")
+print(f"           Scottish Prem, Championship, Saudi, MLS, Brazilian, Argentine, Austrian)")
+print(f"Cache    : ~/.cache/sofascore/  (re-runs use cache, ~instant)")
 print()
 
 total = 0
