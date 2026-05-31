@@ -123,21 +123,21 @@ with tab_live:
     if not matches:
         st.info("No matches found for today.")
     else:
-        # Filter to matches people care about (hide very obscure ones by default)
-        show_all = st.checkbox("Show all competitions", value=False)
-        top_tier_keywords = [
-            "Premier", "La Liga", "Serie A", "Bundesliga", "Ligue 1",
-            "Champions", "Europa", "Nations", "World Cup", "Friendly",
-            "International", "Copa", "EURO", "Qualification",
+        show_all = st.checkbox("Show club matches too", value=False)
+        international_keywords = [
+            "international", "friendly", "world cup", "nations league",
+            "euro", "copa america", "africa cup", "qualification",
+            "olympic", "u21", "u20", "u19", "u18", "u17", "youth",
+            "concacaf", "conmebol", "uefa", "caf", "afc", "ofc",
         ]
         filtered = matches if show_all else [
             m for m in matches
-            if any(k.lower() in (m["tournament"] + m["category"]).lower()
-                   for k in top_tier_keywords)
+            if any(k in (m["tournament"] + " " + m["category"]).lower()
+                   for k in international_keywords)
         ]
 
         if not filtered:
-            filtered = matches  # fallback
+            filtered = matches  # fallback if filter is too aggressive
 
         # Build display labels
         def fmt_match(m):
