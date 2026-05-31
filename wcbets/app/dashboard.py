@@ -110,11 +110,15 @@ with tab_live:
     if st.button("🔄 Refresh match list"):
         st.cache_data.clear()
 
+    from datetime import date as _date
+    _today = _date.today().isoformat()
+
     @st.cache_data(ttl=120)
-    def load_todays_matches():
+    def load_todays_matches(today_str: str):  # date in key forces refresh each day
         return get_todays_matches()
 
-    matches = load_todays_matches()
+    matches = load_todays_matches(_today)
+    st.caption(f"Showing matches for {_today}")
 
     if not matches:
         st.info("No matches found for today.")

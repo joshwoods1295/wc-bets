@@ -74,7 +74,8 @@ def get_lineup(event_id: int) -> dict:
     for side in ("home", "away"):
         side_data = data.get(side, {})
         for entry in side_data.get("players", []):
-            if not entry.get("starter", False):
+            # Sofascore uses substitute=False for starters (starter field is None)
+            if entry.get("substitute", True):
                 continue
             p = entry.get("player", {})
             pos_raw = entry.get("position") or p.get("position") or ""
