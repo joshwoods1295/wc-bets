@@ -88,11 +88,11 @@ def _get(url: str, cache_key: str | None = None, retries: int = 2) -> dict:
     if cache_key:
         p = _cache_path(cache_key)
         if p.exists():
-            return json.loads(p.read_text())
+            return json.loads(p.read_text())  # cache hit — no delay
 
     for attempt in range(retries + 1):
         try:
-            time.sleep(REQUEST_DELAY)
+            time.sleep(REQUEST_DELAY)  # only on live requests
             r = requests.get(url, headers=HEADERS, timeout=15)
             if r.status_code == 200:
                 data = r.json()

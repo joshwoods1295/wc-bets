@@ -12,41 +12,52 @@ from wcbets.analysis.percentiles import percentile_rank
 
 st.set_page_config(page_title="WC Bets", layout="wide")
 
+# DB_PATH is the cache key — functions open their own connection so
+# Reload (which calls st.cache_data.clear()) always gets fresh data.
+_db = str(DB_PATH)
+
+
+def _conn():
+    """Fresh read-only-ish connection; cheap on SQLite."""
+    c = repo.connect(DB_PATH)
+    repo.init_db(c)
+    return c
+
+
+# One persistent write connection for backlog mutations
 @st.cache_resource
-def get_conn():
+def get_write_conn():
     c = repo.connect(DB_PATH)
     repo.init_db(c)
     repo.seed_backlog(c, now="seed")
     return c
 
-conn = get_conn()
+
+@st.cache_data(ttl=3600)
+def cached_players_by_country(country: str, _db: str = _db):
+    return mq.players_by_country(_conn(), country)
 
 
 @st.cache_data(ttl=3600)
-def cached_players_by_country(country: str):
-    return mq.players_by_country(conn, country)
+def cached_peer_dist(position: str, stat: str, _db: str = _db):
+    return mq.peer_distribution(_conn(), position, stat)
 
 
 @st.cache_data(ttl=3600)
-def cached_peer_dist(position: str, stat: str):
-    return mq.peer_distribution(conn, position, stat)
+def cached_countries(_db: str = _db):
+    return mq.list_countries(_conn())
 
 
 @st.cache_data(ttl=3600)
-def cached_countries():
-    return mq.list_countries(conn)
-
-
-@st.cache_data(ttl=3600)
-def prewarm_peers():
-    """Pre-compute all peer distributions once at startup."""
-    from wcbets.analysis.matchup import RULES
+def prewarm_peers(_db: str = _db):
     for _, def_stat, atk_stat in RULES:
         for pos in ("GK", "DF", "MF", "FW"):
             cached_peer_dist(pos, def_stat)
             cached_peer_dist(pos, atk_stat)
 
+
 prewarm_peers()
+conn = get_write_conn()
 
 
 col_title, col_reload = st.columns([8, 1])
