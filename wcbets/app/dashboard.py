@@ -11,11 +11,23 @@ from wcbets.analysis.matchup import RULES
 from wcbets.analysis.percentiles import percentile_rank
 
 st.set_page_config(page_title="WC Bets", layout="wide")
-conn = repo.connect(DB_PATH)
-repo.init_db(conn)
-repo.seed_backlog(conn, now="seed")
 
-st.title("WC Bets")
+@st.cache_resource
+def get_conn():
+    c = repo.connect(DB_PATH)
+    repo.init_db(c)
+    repo.seed_backlog(c, now="seed")
+    return c
+
+conn = get_conn()
+
+col_title, col_reload = st.columns([8, 1])
+col_title.title("WC Bets")
+if col_reload.button("↺ Reload", help="Reload after scraping new data"):
+    st.cache_resource.clear()
+    st.cache_data.clear()
+    st.rerun()
+
 tab_live, tab_squads_match, tab_squads, tab_backlog = st.tabs(
     ["🔴 Live / Today", "⚽ Squad matchups", "📊 Squad stats", "📋 Backlog"]
 )
