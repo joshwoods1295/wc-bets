@@ -21,6 +21,34 @@ def get_conn():
 
 conn = get_conn()
 
+
+@st.cache_data(ttl=3600)
+def cached_players_by_country(country: str):
+    return mq.players_by_country(conn, country)
+
+
+@st.cache_data(ttl=3600)
+def cached_peer_dist(position: str, stat: str):
+    return mq.peer_distribution(conn, position, stat)
+
+
+@st.cache_data(ttl=3600)
+def cached_countries():
+    return mq.list_countries(conn)
+
+
+@st.cache_data(ttl=3600)
+def prewarm_peers():
+    """Pre-compute all peer distributions once at startup."""
+    from wcbets.analysis.matchup import RULES
+    for _, def_stat, atk_stat in RULES:
+        for pos in ("GK", "DF", "MF", "FW"):
+            cached_peer_dist(pos, def_stat)
+            cached_peer_dist(pos, atk_stat)
+
+prewarm_peers()
+
+
 col_title, col_reload = st.columns([8, 1])
 col_title.title("WC Bets")
 if col_reload.button("↺ Reload", help="Reload after scraping new data"):
@@ -39,13 +67,8 @@ tab_live, tab_squads_match, tab_squads, tab_backlog = st.tabs(
 
 def _run_matchups(defenders, attackers, threshold):
     """Score all def×atk pairs, return (flagged, top_rest) sorted lists."""
-    peer_cache = {}
-
     def get_peers(pos, stat):
-        key = (pos, stat)
-        if key not in peer_cache:
-            peer_cache[key] = mq.peer_distribution(conn, pos, stat)
-        return peer_cache[key]
+        return cached_peer_dist(pos, stat)
 
     all_matchups = []
     for d in defenders:
@@ -259,7 +282,7 @@ with tab_live:
 # ---------------------------------------------------------------------------
 
 with tab_squads_match:
-    countries = mq.list_countries(conn)
+    countries = cached_countries()
     if not countries:
         st.info("No squads loaded. Run scrape_data.py then import_squads.py first.")
     else:
@@ -272,9 +295,9 @@ with tab_squads_match:
             key="threshold_sq"
         ) / 100
 
-        defenders = [p for p in mq.players_by_country(conn, home)
+        defenders = [p for p in cached_players_by_country(home)
                      if (p["position"] or "").startswith("D")]
-        attackers = [p for p in mq.players_by_country(conn, away)
+        attackers = [p for p in cached_players_by_country(away)
                      if (p["position"] or "").startswith(("F", "M"))]
 
         if not defenders:
@@ -291,11 +314,11 @@ with tab_squads_match:
 # ---------------------------------------------------------------------------
 
 with tab_squads:
-    countries2 = mq.list_countries(conn)
+    countries2 = cached_countries()
     if countries2:
         import pandas as pd
         country = st.selectbox("Country", countries2, key="squad_country")
-        players = mq.players_by_country(conn, country)
+        players = cached_players_by_country(country)
         if players:
             df = pd.DataFrame([{
                 "Name": p["name"],
