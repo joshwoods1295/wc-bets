@@ -29,16 +29,13 @@ HEADERS = {
     "Sec-Fetch-Site": "same-site",
 }
 
-def _load_cookies() -> dict:
-    """Load Sofascore cookies from Streamlit secrets if available, else return empty."""
+def _get_cookies() -> dict:
     try:
         import streamlit as st
         return dict(st.secrets.get("sofascore_cookies", {}))
     except Exception:
         return {}
 
-
-COOKIES = _load_cookies()
 
 _POS_MAP = {
     "G": "GK", "GK": "GK",
@@ -52,7 +49,7 @@ def _get(url: str) -> dict:
     try:
         time.sleep(0.2)
         kw = {"impersonate": _IMPERSONATE} if _IMPERSONATE else {}
-        r = _requests.get(url, headers=HEADERS, cookies=COOKIES, timeout=10, **kw)
+        r = _requests.get(url, headers=HEADERS, cookies=_get_cookies(), timeout=10, **kw)
         return r.json() if r.status_code == 200 else {}
     except Exception:
         return {}
