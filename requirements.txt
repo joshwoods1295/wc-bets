@@ -4,3 +4,4 @@ streamlit>=1.30
 beautifulsoup4>=4.12
 pytest>=8.0
 curl_cffi
+cloudscraper

@@ -8,8 +8,15 @@ try:
     from curl_cffi import requests as _requests
     _IMPERSONATE = "chrome136"
 except ImportError:
-    import requests as _requests
-    _IMPERSONATE = None
+    try:
+        import cloudscraper
+        _scraper = cloudscraper.create_scraper()
+        _requests = None
+        _IMPERSONATE = "cloudscraper"
+    except ImportError:
+        import requests as _requests
+        _scraper = None
+        _IMPERSONATE = None
 
 BASE = "https://api.sofascore.com/api/v1"
 HEADERS = {
@@ -48,8 +55,11 @@ _POS_MAP = {
 def _get(url: str) -> dict:
     try:
         time.sleep(0.2)
-        kw = {"impersonate": _IMPERSONATE} if _IMPERSONATE else {}
-        r = _requests.get(url, headers=HEADERS, cookies=_get_cookies(), timeout=10, **kw)
+        if _IMPERSONATE == "cloudscraper":
+            r = _scraper.get(url, timeout=10)
+        else:
+            kw = {"impersonate": _IMPERSONATE} if _IMPERSONATE else {}
+            r = _requests.get(url, headers=HEADERS, cookies=_get_cookies(), timeout=10, **kw)
         return r.json() if r.status_code == 200 else {}
     except Exception:
         return {}
