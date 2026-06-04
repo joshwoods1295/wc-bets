@@ -150,8 +150,11 @@ def _render_matchups(flagged, top_rest, threshold, context=""):
 with tab_live:
     st.subheader("Today's matches")
 
-    from wcbets.scrape.lineups import get_todays_matches, get_lineup, resolve_lineup_to_db
+    from wcbets.scrape.lineups import get_todays_matches, get_lineup, resolve_lineup_to_db, _IMPERSONATE
     from datetime import datetime
+
+    if not _IMPERSONATE:
+        st.warning("curl_cffi not installed — Sofascore may block requests. Match list may be empty.")
 
     if st.button("🔄 Refresh match list"):
         st.cache_data.clear()
