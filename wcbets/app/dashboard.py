@@ -155,6 +155,7 @@ with tab_live:
 
     if st.button("🔄 Refresh match list"):
         st.cache_data.clear()
+        st.rerun()
 
     from datetime import date as _date
     _today = _date.today().isoformat()
