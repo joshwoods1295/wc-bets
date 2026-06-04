@@ -148,75 +148,88 @@ def _render_matchups(flagged, top_rest, threshold, context=""):
 # ---------------------------------------------------------------------------
 
 with tab_live:
-    st.subheader("Today's matches")
-
     from wcbets.scrape.lineups import get_todays_matches, get_lineup, resolve_lineup_to_db, _IMPERSONATE
     from datetime import datetime
 
-    if not _IMPERSONATE:
-        st.warning("curl_cffi not installed — Sofascore may block requests. Match list may be empty.")
+    mode = st.radio("Match source", ["Auto (today's list)", "Manual ID"], horizontal=True)
 
-    if st.button("🔄 Refresh match list"):
-        st.cache_data.clear()
-        st.rerun()
+    selected = None
 
-    from datetime import date as _date
-    _today = _date.today().isoformat()
+    if mode == "Auto (today's list)":
+        if not _IMPERSONATE:
+            st.warning("Match listing is blocked on this server. Use Manual ID instead — find the ID on sofascore.com in the match URL.")
 
-    @st.cache_data(ttl=120)
-    def load_todays_matches(today_str: str):  # date in key forces refresh each day
-        return get_todays_matches()
+        col_r, col_btn = st.columns([1, 1])
+        if col_btn.button("🔄 Refresh match list"):
+            st.cache_data.clear()
+            st.rerun()
 
-    matches = load_todays_matches(_today)
-    st.caption(f"Showing matches for {_today}")
+        from datetime import date as _date
+        _today = _date.today().isoformat()
 
-    if not matches:
-        st.info("No matches found for today.")
+        @st.cache_data(ttl=120)
+        def load_todays_matches(today_str: str):
+            return get_todays_matches()
+
+        matches = load_todays_matches(_today)
+        st.caption(f"Showing matches for {_today}")
+
+        if not matches:
+            st.info("No matches found. Try Manual ID mode.")
+        else:
+            show_all = st.checkbox("Show club matches too", value=False)
+            international_keywords = [
+                "international", "friendly", "world cup", "nations league",
+                "euro", "copa america", "africa cup", "qualification",
+                "olympic", "u21", "u20", "u19", "u18", "u17", "youth",
+                "concacaf", "conmebol", "uefa", "caf", "afc", "ofc",
+            ]
+            filtered = matches if show_all else [
+                m for m in matches
+                if any(k in (m["tournament"] + " " + m["category"]).lower()
+                       for k in international_keywords)
+            ]
+            if not filtered:
+                filtered = matches
+
+            def fmt_match(m):
+                ts = m["timestamp"]
+                try:
+                    t = datetime.fromtimestamp(ts).strftime("%H:%M")
+                except Exception:
+                    t = "?"
+                badge = "🔴 " if m["status_type"] in ("inprogress",) else ""
+                return f"{badge}{t}  {m['home']} vs {m['away']}  [{m['tournament']}]  {m['status']}"
+
+            labels = [fmt_match(m) for m in filtered]
+            choice = st.selectbox("Pick a match", range(len(labels)),
+                                  format_func=lambda i: labels[i])
+            selected = filtered[choice]
+            st.markdown(
+                f"**{selected['home']} vs {selected['away']}**  \n"
+                f"{selected['tournament']} · Sofascore ID: `{selected['id']}`"
+            )
+
     else:
-        show_all = st.checkbox("Show club matches too", value=False)
-        international_keywords = [
-            "international", "friendly", "world cup", "nations league",
-            "euro", "copa america", "africa cup", "qualification",
-            "olympic", "u21", "u20", "u19", "u18", "u17", "youth",
-            "concacaf", "conmebol", "uefa", "caf", "afc", "ofc",
-        ]
-        filtered = matches if show_all else [
-            m for m in matches
-            if any(k in (m["tournament"] + " " + m["category"]).lower()
-                   for k in international_keywords)
-        ]
+        st.caption("Find the match ID in the Sofascore URL, e.g. sofascore.com/football/match/england-germany/**12345678**")
+        manual_id = st.text_input("Sofascore match ID", placeholder="e.g. 12345678")
+        home_name = st.text_input("Home team name", placeholder="e.g. England")
+        away_name = st.text_input("Away team name", placeholder="e.g. Germany")
+        if manual_id.strip() and home_name.strip() and away_name.strip():
+            selected = {
+                "id": int(manual_id.strip()),
+                "home": home_name.strip(),
+                "away": away_name.strip(),
+                "tournament": "Manual",
+            }
 
-        if not filtered:
-            filtered = matches  # fallback if filter is too aggressive
-
-        # Build display labels
-        def fmt_match(m):
-            ts = m["timestamp"]
-            try:
-                t = datetime.fromtimestamp(ts).strftime("%H:%M")
-            except Exception:
-                t = "?"
-            status = m["status"]
-            badge = "🔴 " if m["status_type"] in ("inprogress",) else ""
-            return f"{badge}{t}  {m['home']} vs {m['away']}  [{m['tournament']}]  {status}"
-
-        labels = [fmt_match(m) for m in filtered]
-        choice = st.selectbox("Pick a match", range(len(labels)),
-                              format_func=lambda i: labels[i])
-        selected = filtered[choice]
-
-        st.markdown(
-            f"**{selected['home']} vs {selected['away']}**  \n"
-            f"{selected['tournament']} · Sofascore ID: `{selected['id']}`"
-        )
-
+    if selected:
         threshold_live = st.slider(
             "Min percentile", 50, 95, int(FLAG_PERCENTILE * 100), 5,
             key="threshold_live"
         ) / 100
 
-        col_a, col_b = st.columns(2)
-        home_defends = col_a.checkbox(f"{selected['home']} defending", value=True)
+        home_defends = st.checkbox(f"{selected['home']} defending", value=True)
 
         if st.button("🔍 Fetch lineup & run matchups", type="primary"):
             with st.spinner("Fetching lineup from Sofascore..."):
