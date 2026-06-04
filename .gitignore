@@ -1,9 +1,9 @@
 .venv/
 __pycache__/
 *.pyc
-data/*.db
+# data/*.db  # committed so Streamlit Cloud has squad data
 .soccerdata/
 .DS_Store
 downloaded_files/
 .pytest_cache/
-.pytest_cache/
+.streamlit/secrets.toml

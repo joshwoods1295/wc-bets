@@ -4,17 +4,41 @@ import time
 import unicodedata
 from datetime import date
 
-import requests
+try:
+    from curl_cffi import requests as _requests
+    _IMPERSONATE = "chrome136"
+except ImportError:
+    import requests as _requests
+    _IMPERSONATE = None
 
 BASE = "https://api.sofascore.com/api/v1"
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
     ),
-    "Accept": "application/json",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-GB,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
     "Referer": "https://www.sofascore.com/",
+    "Origin": "https://www.sofascore.com",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-site",
 }
+
+def _load_cookies() -> dict:
+    """Load Sofascore cookies from Streamlit secrets if available, else return empty."""
+    try:
+        import streamlit as st
+        return dict(st.secrets.get("sofascore_cookies", {}))
+    except Exception:
+        return {}
+
+
+COOKIES = _load_cookies()
 
 _POS_MAP = {
     "G": "GK", "GK": "GK",
@@ -27,7 +51,8 @@ _POS_MAP = {
 def _get(url: str) -> dict:
     try:
         time.sleep(0.2)
-        r = requests.get(url, headers=HEADERS, timeout=10)
+        kw = {"impersonate": _IMPERSONATE} if _IMPERSONATE else {}
+        r = _requests.get(url, headers=HEADERS, cookies=COOKIES, timeout=10, **kw)
         return r.json() if r.status_code == 200 else {}
     except Exception:
         return {}
@@ -55,14 +80,7 @@ def get_todays_matches() -> list[dict]:
             "status_type": e.get("status", {}).get("type", "notstarted"),
         })
     matches.sort(key=lambda x: x["timestamp"])
-    # Only return upcoming or live matches — never completed
-    active = {"notstarted", "inprogress", "1sthalf", "halftime",
-              "2ndhalf", "overtime", "penalties", "pause", "extra"}
-    return [m for m in matches
-            if m["status_type"].lower() in active
-            or m["status"].lower() in ("not started", "live", "in progress",
-                                       "1st half", "2nd half", "half time",
-                                       "extra time", "penalties")]
+    return matches
 
 
 def get_lineup(event_id: int) -> dict:
